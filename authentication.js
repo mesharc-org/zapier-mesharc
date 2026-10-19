@@ -17,6 +17,7 @@ module.exports = {
     url: `${API}/me`,
     method: 'GET',
   },
-  // The workspace the key belongs to.
-  connectionLabel: '{{json.name}}',
+  // The workspace the key belongs to. Zapier hands the test's answer (/me) to the label as
+  // bundle.inputData.
+  connectionLabel: '{{bundle.inputData.name}}',
 };
