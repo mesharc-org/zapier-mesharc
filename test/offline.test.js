@@ -250,7 +250,7 @@ describe('a test in the Zap editor', () => {
         markdown: '# Example', words: 30, credits: 1, crawledAt: '2026-10-19T05:53:37.150000+00:00' }],
     });
     const out = await appTester(App.creates.scrape_url.operation.perform, { authData: auth, meta, inputData: { url: 'https://example.com/' } });
-    expect(sent).toEqual({ url: 'https://example.com/', formats: 'markdown', timeout: 40 });
+    expect(sent).toEqual({ url: 'https://example.com/', formats: 'markdown', timeout: 20 });
     expect(out).toMatchObject({ scrapeId: 'one1', title: 'Example Domain', markdown: '# Example', pageStatus: 'ok' });
     expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.scrape_url.operation.sample).sort());
   });
@@ -274,7 +274,7 @@ describe('a test in the Zap editor', () => {
     api().post(`${P}/search`, (b) => { sent = b; return true; }).reply(200, { id: 's8', status: 'done', query: 'q',
       data: [{ position: 1, title: 'T1', url: 'https://a.test/', snippet: 'S1', source: 'web', engine: 'google' }] });
     const out = await appTester(App.creates.search_web.operation.perform, { authData: auth, meta, inputData: { query: 'q', limit: '3' } });
-    expect(sent).toEqual({ query: 'q', limit: 3, timeout: 40 });
+    expect(sent).toEqual({ query: 'q', limit: 3, timeout: 20 });
     expect(out).toMatchObject({ searchId: 's8', resultCount: 1, topUrl: 'https://a.test/' });
     expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.search_web.operation.sample).sort());
   });

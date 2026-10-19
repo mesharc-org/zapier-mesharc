@@ -1,8 +1,8 @@
 const { call } = require('../lib/api');
 
-// How long a test in the Zap editor waits for the results: the editor gives a test step about
-// fifty seconds, and does not wait for a callback.
-const SAMPLE_WAIT_S = 40;
+// How long a test in the Zap editor waits for the results: the editor stops a test step at 30
+// seconds, and does not wait for a callback.
+const SAMPLE_WAIT_S = 20;
 
 // A search takes about half a minute, longer than Zapier waits for an action. So it is started
 // with Zapier's callback URL as its webhook, and the step resumes when MeshArc posts that the
