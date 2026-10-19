@@ -237,6 +237,56 @@ describe('Search the Web', () => {
   });
 });
 
+// A test in the Zap editor (bundle.meta.isLoadingSample) waits for no callback: the actions read
+// the page or the results there and then, so the fields offered for mapping are the real ones.
+describe('a test in the Zap editor', () => {
+  const meta = { isLoadingSample: true };
+
+  it('Scrape URL reads the page directly, without a callback, and returns the page', async () => {
+    let sent;
+    api().post(`${P}/scrape`, (b) => { sent = b; return true; }).reply(200, {
+      id: 'one1', status: 'done',
+      data: [{ url: 'https://example.com/', status: 'ok', pageStatus: 'ok', httpStatus: 200, head: { title: 'Example Domain' },
+        markdown: '# Example', words: 30, credits: 1, crawledAt: '2026-10-19T05:53:37.150000+00:00' }],
+    });
+    const out = await appTester(App.creates.scrape_url.operation.perform, { authData: auth, meta, inputData: { url: 'https://example.com/' } });
+    expect(sent).toEqual({ url: 'https://example.com/', formats: 'markdown', timeout: 40 });
+    expect(out).toMatchObject({ scrapeId: 'one1', title: 'Example Domain', markdown: '# Example', pageStatus: 'ok' });
+    expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.scrape_url.operation.sample).sort());
+  });
+
+  it('Scrape URL still fails a test on a missing page, saying why', async () => {
+    api().post(`${P}/scrape`).reply(200, { id: 'one2', status: 'done',
+      data: [{ url: 'https://x.test/', status: 'missing', pageStatus: 'missing', reason: 'HTTP 404: no such page', markdown: '# Error' }] });
+    await expect(appTester(App.creates.scrape_url.operation.perform, { authData: auth, meta, inputData: { url: 'https://x.test/' } }))
+      .rejects.toThrow('MeshArc could not read https://x.test/: HTTP 404: no such page.');
+  });
+
+  it('Scrape URL not read within the wait still offers every field, the page status saying so', async () => {
+    api().post(`${P}/scrape`).reply(202, { id: 'one3', status: 'running', data: [] });
+    const out = await appTester(App.creates.scrape_url.operation.perform, { authData: auth, meta, inputData: { url: 'https://slow.test/' } });
+    expect(out).toMatchObject({ scrapeId: 'one3', pageStatus: 'running', url: 'https://slow.test/', markdown: null });
+    expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.scrape_url.operation.sample).sort());
+  });
+
+  it('Search the Web waits for the results directly, without a callback, and returns them', async () => {
+    let sent;
+    api().post(`${P}/search`, (b) => { sent = b; return true; }).reply(200, { id: 's8', status: 'done', query: 'q',
+      data: [{ position: 1, title: 'T1', url: 'https://a.test/', snippet: 'S1', source: 'web', engine: 'google' }] });
+    const out = await appTester(App.creates.search_web.operation.perform, { authData: auth, meta, inputData: { query: 'q', limit: '3' } });
+    expect(sent).toEqual({ query: 'q', limit: 3, timeout: 40 });
+    expect(out).toMatchObject({ searchId: 's8', resultCount: 1, topUrl: 'https://a.test/' });
+    expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.search_web.operation.sample).sort());
+  });
+
+  it('Search the Web still running after the wait still offers every field', async () => {
+    api().post(`${P}/search`).reply(202, { id: 's7', status: 'running', query: 'q', data: [] });
+    const out = await appTester(App.creates.search_web.operation.perform, { authData: auth, meta, inputData: { query: 'q' } });
+    expect(out).toMatchObject({ searchId: 's7', query: 'q', resultCount: null, results: [] });
+    expect(Object.keys(out).sort()).toEqual(Object.keys(App.creates.search_web.operation.sample).sort());
+  });
+});
+
 // Zapier passes inputs as typed (flags.cleanInputData is false): an optional field left empty
 // arrives as '' or [''], and must not reach MeshArc as a value.
 describe('optional fields left empty', () => {
