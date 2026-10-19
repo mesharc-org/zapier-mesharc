@@ -1,8 +1,8 @@
 const { call, simplifyPage } = require('../lib/api');
 
-// How long a test in the Zap editor waits for the page: the editor gives a test step about
-// fifty seconds, and does not wait for a callback.
-const SAMPLE_WAIT_S = 40;
+// How long a test in the Zap editor waits for the page: the editor stops a test step at 30
+// seconds, and does not wait for a callback.
+const SAMPLE_WAIT_S = 20;
 
 // The step's output for a scrape that has ended, or the step fails saying why.
 const pageOutput = (z, id, page, status, url) => {
