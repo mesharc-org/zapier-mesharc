@@ -47,6 +47,12 @@ describe('authentication', () => {
     expect(scope.isDone()).toBe(true);
   });
 
+  it("labels the connection with a field the test's answer has: the workspace's name", () => {
+    // Zapier renders the label from the auth test's answer, given as bundle.inputData.
+    const field = App.authentication.connectionLabel.match(/^\{\{bundle\.inputData\.(\w+)\}\}$/);
+    expect(field && field[1]).toBe('name');
+  });
+
   it('says plainly when the key is refused', async () => {
     api().get(`${P}/me`).reply(401, { error: 'unauthorized', detail: 'invalid, expired or revoked API key' });
     await expect(appTester(App.authentication.test, { authData: { apiKey: 'bad' } })).rejects.toThrow(/did not accept the API key/);
