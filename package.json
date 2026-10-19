@@ -1,0 +1,23 @@
+{
+  "name": "zapier-mesharc",
+  "version": "1.0.0",
+  "description": "MeshArc for Zapier: start Zaps when a watched site changes, and scrape pages, crawl sites and search the web.",
+  "homepage": "https://mesharc.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mesharc-org/zapier-mesharc.git"
+  },
+  "license": "MIT",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --testTimeout 120000"
+  },
+  "dependencies": {
+    "zapier-platform-core": "19.2.1"
+  },
+  "devDependencies": {
+    "jest": "30.5.2",
+    "nock": "14.0.17"
+  }
+}
