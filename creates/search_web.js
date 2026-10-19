@@ -1,24 +1,41 @@
 const { call } = require('../lib/api');
 
+// How long a test in the Zap editor waits for the results: the editor gives a test step about
+// fifty seconds, and does not wait for a callback.
+const SAMPLE_WAIT_S = 40;
+
 // A search takes about half a minute, longer than Zapier waits for an action. So it is started
 // with Zapier's callback URL as its webhook, and the step resumes when MeshArc posts that the
 // results are in (an answer from MeshArc's cache posts at once).
 const perform = async (z, bundle) => {
-  const body = {
-    query: bundle.inputData.query,
-    limit: Number(bundle.inputData.limit || 5),
-    timeout: 0,
-    webhook: { url: z.generateCallbackUrl(), events: ['search.completed', 'search.failed'] },
-  };
+  const sample = Boolean(bundle.meta && bundle.meta.isLoadingSample);
+  const body = { query: bundle.inputData.query, limit: Number(bundle.inputData.limit || 5) };
   if (bundle.inputData.country) body.country = String(bundle.inputData.country).toLowerCase();
+  if (sample) {
+    // A test in the Zap editor: wait for the results now, so the fields to map from are theirs.
+    body.timeout = SAMPLE_WAIT_S;
+  } else {
+    body.timeout = 0;
+    body.webhook = { url: z.generateCallbackUrl(), events: ['search.completed', 'search.failed'] };
+  }
   const response = await call(z, 'POST', '/search', { body });
+  if (sample) {
+    if (!['queued', 'running'].includes(response.data.status)) return searchOutput(z, response.data);
+    // Still searching: every field, so the editor still offers them all to map.
+    return { searchId: response.data.id, query: bundle.inputData.query, resultCount: null, results: [],
+      topUrl: null, topTitle: null };
+  }
   return { id: response.data.id, status: response.data.status, query: bundle.inputData.query };
 };
 
 // MeshArc said the search ended: read the results themselves, with the connected key.
 const performResume = async (z, bundle) => {
   const response = await call(z, 'GET', `/search/${encodeURIComponent(bundle.outputData.id)}`);
-  const search = response.data;
+  return searchOutput(z, response.data);
+};
+
+// The step's output for a search that has ended, or the step fails saying why.
+const searchOutput = (z, search) => {
   if (search.status === 'blocked') {
     throw new z.errors.Error('Every search engine refused this search; nothing was charged. Try again later.',
       'SearchRefused', 503);

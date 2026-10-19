@@ -1,29 +1,50 @@
 const { call, simplifyPage } = require('../lib/api');
 
+// How long a test in the Zap editor waits for the page: the editor gives a test step about
+// fifty seconds, and does not wait for a callback.
+const SAMPLE_WAIT_S = 40;
+
+// The step's output for a scrape that has ended, or the step fails saying why.
+const pageOutput = (z, id, page, status, url) => {
+  // Read means ok, or thin (a short page). A 404 or a bot wall comes back with the error page
+  // as its markdown, so the status decides, not whether there is text.
+  const read = page && ['ok', 'thin'].includes(page.pageStatus || page.status);
+  if (!read) {
+    const why = page ? page.reason || page.pageStatus || page.status : status;
+    throw new z.errors.Error(`MeshArc could not read ${url}: ${why || 'no page came back'}.`, 'ScrapeFailed', 422);
+  }
+  return { scrapeId: id, ...simplifyPage(page) };
+};
+
 // A page can take a minute to read past a bot wall, longer than Zapier waits for an action.
 // So the scrape is started with Zapier's callback URL as its webhook, and the step resumes
 // when MeshArc posts that the page is in.
 const perform = async (z, bundle) => {
-  const body = { urls: [bundle.inputData.url], webhook_url: z.generateCallbackUrl() };
-  if (bundle.inputData.maxCredits) body.maxCredits = Number(bundle.inputData.maxCredits);
+  const { url } = bundle.inputData;
+  const maxCredits = bundle.inputData.maxCredits ? Number(bundle.inputData.maxCredits) : undefined;
+  if (bundle.meta && bundle.meta.isLoadingSample) {
+    // A test in the Zap editor: read the page now, so the fields to map from are the page's.
+    const body = { url, formats: 'markdown', timeout: SAMPLE_WAIT_S };
+    if (maxCredits) body.maxCredits = maxCredits;
+    const response = await call(z, 'POST', '/scrape', { body });
+    if (response.data.status === 'done') {
+      return pageOutput(z, response.data.id, (response.data.data || [])[0], response.data.status, url);
+    }
+    // Still reading (a slow site): every field, so the editor still offers them all to map.
+    return { scrapeId: response.data.id, url, title: null, markdown: null, httpStatus: null,
+      pageStatus: response.data.status, words: null, language: null, credits: null, crawledAt: null };
+  }
+  const body = { urls: [url], webhook_url: z.generateCallbackUrl() };
+  if (maxCredits) body.maxCredits = maxCredits;
   const response = await call(z, 'POST', '/scrape', { body });
-  return { id: response.data.id, status: response.data.status, url: bundle.inputData.url };
+  return { id: response.data.id, status: response.data.status, url };
 };
 
 // MeshArc said the scrape ended: read the page itself, with the connected key.
 const performResume = async (z, bundle) => {
   const id = bundle.outputData.id;
   const response = await call(z, 'GET', `/scrape/${encodeURIComponent(id)}`, { params: { formats: 'markdown' } });
-  const page = (response.data.pages || [])[0];
-  // Read means ok, or thin (a short page). A 404 or a bot wall comes back with the error page
-  // as its markdown, so the status decides, not whether there is text.
-  const read = page && ['ok', 'thin'].includes(page.pageStatus || page.status);
-  if (!read) {
-    const why = page ? page.reason || page.pageStatus || page.status : response.data.status;
-    throw new z.errors.Error(`MeshArc could not read ${bundle.outputData.url}: ${why || 'no page came back'}.`,
-      'ScrapeFailed', 422);
-  }
-  return { scrapeId: id, ...simplifyPage(page) };
+  return pageOutput(z, id, (response.data.pages || [])[0], response.data.status, bundle.outputData.url);
 };
 
 module.exports = {
