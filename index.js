@@ -12,6 +12,8 @@ const searchWeb = require('./creates/search_web');
 module.exports = {
   version,
   platformVersion,
+  // Inputs arrive as typed, empty ones included; every operation ignores the empty ones itself.
+  flags: { cleanInputData: false },
   authentication,
   beforeRequest: [addApiKey],
   afterResponse: [explainErrors],

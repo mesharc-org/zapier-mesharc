@@ -231,6 +231,41 @@ describe('Search the Web', () => {
   });
 });
 
+// Zapier passes inputs as typed (flags.cleanInputData is false): an optional field left empty
+// arrives as '' or [''], and must not reach MeshArc as a value.
+describe('optional fields left empty', () => {
+  it('Scrape URL sends no credit cap', async () => {
+    let sent;
+    api().post(`${P}/scrape`, (b) => { sent = b; return true; }).reply(202, { id: 'b9', status: 'queued' });
+    await appTester(App.creates.scrape_url.operation.perform, { authData: auth, inputData: { url: 'https://example.com/', maxCredits: '' } });
+    expect('maxCredits' in sent).toBe(false);
+  });
+
+  it('Start Crawl sends only the URL', async () => {
+    let sent;
+    api().post(`${P}/crawl`, (b) => { sent = b; return true; }).reply(202, { id: 'c9', status: 'queued', progress: { done: 0 } });
+    await appTester(App.creates.start_crawl.operation.perform, { authData: auth,
+      inputData: { url: 'https://example.com/', limit: '', maxDepth: '', includePaths: [''], excludePaths: '' } });
+    expect(sent).toEqual({ url: 'https://example.com/' });
+  });
+
+  it('Search the Web uses 5 results and no country', async () => {
+    let sent;
+    api().post(`${P}/search`, (b) => { sent = b; return true; }).reply(202, { id: 's9', status: 'queued' });
+    await appTester(App.creates.search_web.operation.perform, { authData: auth, inputData: { query: 'q', limit: '', country: '' } });
+    expect([sent.limit, 'country' in sent]).toEqual([5, false]);
+  });
+
+  it('New Changed Page with no kinds chosen fires on added, modified and removed', async () => {
+    const op = App.triggers.changed_page.operation;
+    const body = JSON.stringify(runMessage());
+    api().get(`${P}/projects/${PROJECT}/changes`).query({ run_id: 'run-2' }).reply(200, change('chg-2', 'run-2', feed));
+    const out = await appTester(op.perform, { authData: auth, inputData: { project: PROJECT, kinds: [''] },
+      subscribeData: { id: 'sub-1', secret: SECRET }, rawRequest: signed(body), cleanedRequest: JSON.parse(body) });
+    expect(out.map((i) => i.kind)).toEqual(['modified', 'added']);
+  });
+});
+
 describe('errors', () => {
   it("passes MeshArc's own reason on", async () => {
     api().post(`${P}/crawl`).reply(402, { error: 'payment required', code: 'credits_exhausted', detail: 'This workspace has used its credits for the month.' });
