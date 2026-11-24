@@ -37,7 +37,7 @@ const performResume = async (z, bundle) => {
 // The step's output for a search that has ended, or the step fails saying why.
 const searchOutput = (z, search) => {
   if (search.status === 'blocked') {
-    throw new z.errors.Error('Every search engine refused this search; nothing was charged. Try again later.',
+    throw new z.errors.Error(`This search had no results; nothing was charged. ${search.error ? `(${search.error}) ` : ''}Try again later.`,
       'SearchRefused', 503);
   }
   if (search.status !== 'done') {
@@ -49,7 +49,6 @@ const searchOutput = (z, search) => {
     title: hit.title,
     url: hit.url,
     snippet: hit.snippet,
-    engine: hit.engine,
   }));
   return {
     searchId: search.id,
@@ -98,7 +97,6 @@ module.exports = {
           title: 'MeshArc: the web crawler',
           url: 'https://mesharc.dev/',
           snippet: 'Search the web, scrape pages to clean markdown, and see what changed.',
-          engine: 'google',
         },
       ],
       topUrl: 'https://mesharc.dev/',
@@ -113,7 +111,6 @@ module.exports = {
       { key: 'results[]title', label: 'Results Title' },
       { key: 'results[]url', label: 'Results URL' },
       { key: 'results[]snippet', label: 'Results Snippet' },
-      { key: 'results[]engine', label: 'Results Engine' },
       { key: 'searchId', label: 'Search ID' },
     ],
   },
