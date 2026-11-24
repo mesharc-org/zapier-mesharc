@@ -228,12 +228,12 @@ describe('Search the Web', () => {
     ] });
     const out = await appTester(op.performResume, { authData: auth, outputData: { id: 's1' } });
     expect(out).toMatchObject({ searchId: 's1', resultCount: 2, topUrl: 'https://a.test/', topTitle: 'T1' });
-    expect(out.results[1]).toEqual({ position: 2, title: 'T2', url: 'https://b.test/', snippet: 'S2', engine: 'google' });
+    expect(out.results[1]).toEqual({ position: 2, title: 'T2', url: 'https://b.test/', snippet: 'S2' });
   });
 
-  it('says so when every engine refused the search', async () => {
+  it('says so when the search had no results', async () => {
     api().get(`${P}/search/s2`).reply(200, { id: 's2', status: 'blocked', query: 'q', data: [] });
-    await expect(appTester(op.performResume, { authData: auth, outputData: { id: 's2' } })).rejects.toThrow(/refused this search/);
+    await expect(appTester(op.performResume, { authData: auth, outputData: { id: 's2' } })).rejects.toThrow(/had no results/);
   });
 });
 
